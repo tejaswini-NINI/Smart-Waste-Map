@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Smart Map System</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+
+    <style>
+        body {
+    font-family: Arial;
+    margin: 0;
+    background: linear-gradient(-45deg, #a1c4fd, #c2e9fb, #d4fc79, #96e6a1);
+    background-size: 400% 400%;
+    animation: gradientBG 10s ease infinite;
+}
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+       @keyframes glow {
+    from {
+        text-shadow: 0 0 10px rgba(255,255,255,0.5),
+                     0 0 20px rgba(255,255,255,0.3);
+    }
+    to {
+        text-shadow: 0 0 20px rgba(255,255,255,0.9),
+                     0 0 30px rgba(255,255,255,0.6);
+    }
+} }
+
+        h2 .title {
+    text-align:center;
+    font-size: 42px;
+    font-weight: 800;
+
+    background: linear-gradient(90deg, #6a0dad, #b266ff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+
+    letter-spacing: 2px;
+}
+        #map {
+    height: 60vh;
+    margin: 10px;
+    border-radius: 15px;
+    overflow: hidden;
+
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+.controls {
+    padding: 12px;
+    margin: 15px;
+    border-radius: 15px;
+
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+
+    text-align: center;
+}
+
+        button {
+            margin: 5px;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 8px;
+            background: #007bff;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        button:hover {
+            background: #0056b3;
+        }
+
+        select {
+            padding: 8px;
+            border-radius: 6px;
+            margin-left: 10px;
+        }
+
+        h3 {
+            .dashboard {
+    display: flex;
+    justify-content: space-around;
+    margin: 15px;
+    gap: 10px;
+}
+
+.card {
+    flex: 1;
+    padding: 15px;
+    border-radius: 15px;
+    text-align: center;
+    color: white;
+    font-weight: bold;
+
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+
+    border: 1px solid rgba(255,255,255,0.2);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+}
+
+.card p {
+    margin: 0;
+    font-size: 14px;
+}
+
+.card h3 {
+    margin: 5px 0 0;
+    font-size: 22px;
+}
+
+.total {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+}
+
+.progress {
+    background: linear-gradient(135deg, #fbc2eb, #a6c1ee);
+}
+
+.cleaned {
+    background: linear-gradient(135deg, #d4fc79, #96e6a1);
+}
+    </style>
+</head>
+
+<body>
+
+<h2>Smart Map System</h2>
+
+<div class="controls">
+    <button onclick="getLocation()">📍 Report Spot</button>
+    <select id="severity">
+        <option value="Low">Low</option>
+        <option value="Medium">Medium</option>
+        <option value="High">High</option>
+    </select>
+</div>
+
+<div id="map"></div>
+
+<h3>
+    <div class="dashboard">
+    <div class="card total">
+        <p>Total</p>
+        <h3 id="total">0</h3>
+    </div>
+
+    <div class="card progress">
+        <p>In Progress</p>
+        <h3 id="progress">0</h3>
+    </div>
+
+    <div class="card cleaned">
+        <p>Cleaned</p>
+        <h3 id="cleaned">0</h3>
+    </div>
+</div>
+</h3>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<script>
+let map = L.map('map').setView([13.0827, 80.2707], 12); // Chennai
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap'
+}).addTo(map);
+
+// Dummy Data
+let reports = [
+    {lat:13.08, lng:80.27, severity:'Low', status:'Reported'},
+    {lat:13.09, lng:80.28, severity:'Medium', status:'Reported'},
+    {lat:13.07, lng:80.25, severity:'High', status:'Reported'},
+    {lat:13.10, lng:80.29, severity:'Low', status:'In Progress'},
+    {lat:13.06, lng:80.24, severity:'High', status:'Cleaned'}
+];
+
+let markers = [];
+
+function getColor(sev){
+    if(sev === 'Low') return 'green';
+    if(sev === 'Medium') return 'orange';
+    return 'red';
+}
+
+function render(){
+    markers.forEach(m => map.removeLayer(m));
+    markers = [];
+
+    let total = reports.length;
+    let progress = reports.filter(r => r.status === 'In Progress').length;
+    let cleaned = reports.filter(r => r.status === 'Cleaned').length;
+
+    document.getElementById("total").innerText = total;
+    document.getElementById("progress").innerText = progress;
+    document.getElementById("cleaned").innerText = cleaned;
+
+    reports.forEach((r, index) => {
+        let marker = L.circleMarker([r.lat, r.lng], {
+            color: getColor(r.severity),
+            radius: 8
+        }).addTo(map);
+
+        marker.bindPopup(`
+            Severity: ${r.severity}<br>
+            Status: ${r.status}<br>
+            <button onclick="claim(${index})">Claim</button>
+        `);
+
+        markers.push(marker);
+    });
+}
+
+function claim(index){
+    if(reports[index].status === 'Reported'){
+        reports[index].status = 'In Progress';
+        render();
+    }
+}
+
+function getLocation(){
+    if(navigator.geolocation){
+        navigator.geolocation.getCurrentPosition(pos => {
+            let lat = pos.coords.latitude;
+            let lng = pos.coords.longitude;
+            let severity = document.getElementById("severity").value;
+
+            reports.push({
+                lat, lng,
+                severity,
+                status:'Reported'
+            });
+
+            render();
+        });
+    } else {
+        alert("Geolocation not supported");
+    }
+}
+
+render();
+</script>
+
+</body>
+</html>
